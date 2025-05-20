@@ -1,0 +1,48 @@
+{
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+    "manifest_version": 3,
+    "name": "AI QA Assistant",
+    "version": "1.6",
+    "description": "Test automation code generator using Generative AI",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "sidePanel",
+        "storage"
+    ],
+    "action": {
+        "default_title": "genai",
+        "default_icon": {
+            "16": "assets/images/logo-small.png",
+            "32": "assets/images/logo-small.png",
+            "48": "assets/images/logo-small.png",
+            "128": "assets/images/logo-small.png"
+        }
+    },
+    "icons": {
+        "16": "assets/images/logo-small.png",
+        "32": "assets/images/logo-small.png",
+        "48": "assets/images/logo-small.png",
+        "128": "assets/images/logo-small.png"
+    },
+    "side_panel": {
+        "default_path": "panel.html"
+    },
+    "background": {
+        "service_worker": "bg.js"
+    },
+    "web_accessible_resources": [{
+        "resources": [
+            "lib/marked/marked.min.js",
+            "lib/prism/prism.js",
+            "lib/prism/prism-typescript.js",
+            "lib/prism/prism-tomorrow.css",
+            "src/content/content.js"
+        ],
+        "matches": ["<all_urls>"]
+    }],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; connect-src 'self'  https://api.groq.com https://api.openai.com https://eu-de.ml.cloud.ibm.com https://iam.cloud.ibm.com" 
+    }
+}
