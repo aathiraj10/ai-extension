@@ -27,7 +27,7 @@
             </label>
             <label>
               <input 
-                type="radio" 
+                type="checkbox" 
                 name="javaGenerationMode" 
                 id="xpathMode"
                 value="XPATH"
@@ -35,7 +35,7 @@
               Xpath
             <label>
               <input 
-                type="radio" 
+                type="checkbox" 
                 name="javaGenerationMode" 
                 id="javaGenModeFeature"
                 value="FEATURE"
@@ -44,7 +44,7 @@
             </label>
             <label>
               <input 
-                type="radio" 
+                type="checkbox" 
                 name="javaGenerationMode" 
                 id="javaGenModePage"
                 value="PAGE"
@@ -91,6 +91,11 @@
               <i class="fa-solid fa-download"></i>
               <span>Download</span>
             </button>
+            </button>
+            <button id="pushToGit" class="inspector-toggle">
+              <i class="fa-brands fa-github"></i>
+              <span>Push to Git</span>
+            </button>            
           </div>
         </div>
       </div>
@@ -150,6 +155,27 @@
           <input type="password" id="watsonxApiKey" class="api-key-input" placeholder="Enter your WatsonX API key">
         </div>
         
+        <!-- Git Integration -->
+        <div class="git-settings-section">
+          <h3>Git Integration</h3>
+          <div class="model-container">
+            <label for="gitUrl">Git URL</label>
+            <input type="text" id="gitUrl" placeholder="https://github.com/your-org/your-repo.git">
+          </div>
+          <div class="model-container">
+            <label for="repoName">Repository Name</label>
+            <input type="text" id="repoName" placeholder="your-repo">
+          </div>
+          <div class="model-container">
+            <label for="branchName">Branch Name</label>
+            <input type="text" id="branchName" placeholder="main">
+          </div>
+          <div class="model-container">
+            <label for="gitToken">Personal Access Token</label>
+            <input type="password" id="gitToken" placeholder="GitHub/GitLab token">
+          </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -161,6 +187,7 @@
   <script src="src/scripts/chat.js" type="module"></script>
   <script src="src/scripts/api/openai-api.js"></script>
   <script src="src/scripts/api/watsonx-api.js"></script>
+  <script src="src/scripts/api/git-api.js"></script>
 
 </body>
 </html>

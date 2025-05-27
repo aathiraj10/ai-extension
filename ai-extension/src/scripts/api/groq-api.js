@@ -6,11 +6,16 @@ class GroqAPI {
   
     // Helper function to extract the entire code block (including the delimiters)
     extractBlock(text) {
-      // Matches a block that starts with ``` and ends with ```
-      const regex = /(```[\s\S]*?```)/;
-      const match = text.match(regex);
-      return match && match[1] ? match[1].trim() : text;
-    }
+  // Matches all blocks that start with ``` and end with ```
+  const regex = /(```[\s\S]*?```)/g;
+  const matches = text.match(regex);
+  if (matches && matches.length > 0) {
+    // Join all code blocks with two newlines
+    return matches.map(block => block.trim()).join('\n\n');
+  }
+  // If no code blocks, return the original text
+  return text;
+}
   
     async sendMessage(prompt, modelName) {
       try {

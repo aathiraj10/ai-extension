@@ -294,12 +294,15 @@ export const DEFAULT_PROMPTS = {
         
     Requirements:
     1. Use recommended Selenium locator strategies in priority:
-       - The elements found using locators should be either one of these tags only: input, button, select, a, div
-       - By.id (only if the id doesn’t contain multiple digits like "ext-gen623")
+       - The elements found using locators should be either one of these tags only: input, button, select, a, div, span
+       - By.id (ONLY IF the id doesn’t contain multiple digits like "awsui-tabs-702-1747927922516-2476-metadata")
        - By.name
        - By.linkText or partialLinkText for links
        - By.cssSelector (avoid using any attribute containing "genai")
        - By.xpath only if others aren’t suitable
+       - Make use of the text(), if available 
+       - xpath should be unique and should not contain any index
+        Example : //span[(contains(text(),'Manage subscriptions'))]
     2. Code structure:
        - Show only the xpath, locator and css locator
        - DO NOT ADD ANY OTHER TEXT
@@ -315,7 +318,57 @@ export const DEFAULT_PROMPTS = {
     CSS:   #lastNameInput
     Locator: By.id("lastNameInput")
     \`\`\`
-  `  
+  `,
+  /**
+   * Prompt for generating Selenium Java Page class with feature
+   */
+SELENIUM_JAVA_PAGE_FEATURE: `  
+    Given the following DOM structure:
+    \`\`\`html
+    \${domContent}
+    \`\`\`
+
+Action to perform: \${userAction}  
+URL: \${pageUrl}
+
+Generate BOTH of the following, in this order:
+
+A valid Gherkin feature file using Cucumber, in a \`\`\`gherkin code block, with a Scenario Outline and Examples table. Do NOT include any explanation or extra text.
+A Selenium Java Page Object class, in a \`\`\`java code block, with JavaDoc for each method. Do NOT include any explanation or extra text.
+The output must be:
+
+First, a heading: "### Gherkin Feature File"
+Then the Gherkin code block
+Next, a heading: "### Selenium Java Page Object Class"
+Then the Java code block
+Do not include any text or explanation outside the code blocks and headings.
+
+\`\`\`gherkin
+Feature: ...
+
+Scenario Outline: ...
+  Given ...
+  When ...
+  Then ...
+
+Examples:
+  | ... |
+
+java
+    package name;
+
+    import com.framework.selenium.api.design.Locators;
+    import com.framework.testng.api.base.ProjectSpecificMethods;
+
+    public class ComponentPage extends ProjectSpecificMethods {
+
+        // Constructor
+
+        // Method
+
+    }
+\`\`\`
+  `
 };
 
 /**
@@ -349,5 +402,6 @@ export const CODE_GENERATOR_TYPES = {
   CUCUMBER_ONLY: 'Cucumber-Only',
   PLAYWRIGHT_TYPESCRIPT_PAGE_ONLY: 'Playwright-Typescript-Page-Only',
   PLAYWRIGHT_TYPESCRIPT_TEST_ONLY: 'Playwright-Typescript-Test-Only',
-  XPATH_ONLY: 'Xpath-Generation-Only'
+  XPATH_ONLY: 'Xpath-Generation-Only',
+  SELENIUM_JAVA_PAGE_FEATURE: "SELENIUM_JAVA_PAGE_FEATURE"
 };

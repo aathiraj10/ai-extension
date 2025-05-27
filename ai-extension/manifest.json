@@ -43,6 +43,6 @@
         "matches": ["<all_urls>"]
     }],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; connect-src 'self'  https://api.groq.com https://api.openai.com https://eu-de.ml.cloud.ibm.com https://iam.cloud.ibm.com" 
+        "extension_pages": "script-src 'self'; connect-src 'self'  https://api.groq.com https://api.openai.com https://eu-de.ml.cloud.ibm.com https://iam.cloud.ibm.com https://api.github.com" 
     }
 }

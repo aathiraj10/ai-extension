@@ -1,4 +1,5 @@
 import { getPrompt } from '../scripts/prompts.js';
+import { GitAPI } from './api/git-api.js';
 
 // Constants
 const INITIAL_SYSTEM_MESSAGE = ``;
@@ -40,6 +41,15 @@ class ChatUI {
         this.initializeTokenThreshold();
         this.initializeCodeGeneratorType();
         this.initializeDownloadButton(); 
+        
+        // Add this for Push to Git
+        const pushBtn = document.getElementById('pushToGit');
+        if (pushBtn) {
+            pushBtn.addEventListener('click', () => this.pushToGit());
+        }
+
+        // Initialize Git settings persistence
+        this.initializeGitSettings();
     }
 
     initialize() {
@@ -60,21 +70,22 @@ class ChatUI {
 
         // Load stored keys
         chrome.storage.sync.get(
-          ['groqApiKey','openaiApiKey','watsonxApiKey','selectedModel','selectedProvider'],
-          (result) => {
-            if (result.groqApiKey)   this.groqAPI   = new GroqAPI(result.groqApiKey);
-            if (result.openaiApiKey) this.openaiAPI = new OpenaiAPI(result.openaiApiKey);
-            if (result.watsonxApiKey) this.watsonxAPI = new WatsonxAPI(result.watsonxApiKey);
+            ['groqApiKey','openaiApiKey','watsonxApiKey','selectedModel','selectedProvider'],
+            (result) => {
+                if (result.groqApiKey)   this.groqAPI   = new GroqAPI(result.groqApiKey);
+                if (result.openaiApiKey) this.openaiAPI = new OpenaiAPI(result.openaiApiKey);
+                if (result.watsonxApiKey) this.watsonxAPI = new WatsonxAPI(result.watsonxApiKey);
 
-            this.selectedModel    = result.selectedModel    || '';
-            this.selectedProvider = result.selectedProvider || '';
-        });
+                this.selectedModel    = result.selectedModel    || '';
+                this.selectedProvider = result.selectedProvider || '';
+            }
+        );
 
         // Listen for changes
         chrome.storage.onChanged.addListener((changes) => {
             if (changes.groqApiKey)       this.groqAPI   = new GroqAPI(changes.groqApiKey.newValue);
             if (changes.openaiApiKey)     this.openaiAPI = new OpenaiAPI(changes.openaiApiKey.newValue);
-            if (changes.watsonxApiKey)   this.watsonxAPI = new WatsonxAPI(changes.watsonxApiKey.newValue);
+            if (changes.watsonxApiKey)    this.watsonxAPI = new WatsonxAPI(changes.watsonxApiKey.newValue);
             if (changes.selectedModel)    this.selectedModel = changes.selectedModel.newValue;
             if (changes.selectedProvider) this.selectedProvider = changes.selectedProvider.newValue;
         });
@@ -126,8 +137,6 @@ class ChatUI {
                 this.updateInspectorButtonState();
             }
         });
-
-
     }
 
     initializeDownloadButton() {
@@ -136,47 +145,51 @@ class ChatUI {
         // Initially disable the button until code is generated
         downloadBtn.disabled = true;
         downloadBtn.addEventListener('click', () => {
-          // Turn off the inspector when download is clicked
-          this.isInspecting = false;
-          this.updateInspectorButtonState();
-      
-          if (!this.generatedCode) return;
-      
-          // Remove markdown code fences from the generated code
-          let finalCode = this.generatedCode.replace(/^```(?:java)?\s*/i, '').replace(/```\s*$/i, '');
-      
-          let fileName = '';
-          // Determine file name based on generator type and extract class/feature name if available
-          if (this.codeGeneratorType === 'SELENIUM_JAVA_PAGE_ONLY' || this.codeGeneratorType === 'SELENIUM_JAVA_TEST_ONLY') {
-            // Try to extract "public class <ClassName>" from the generated code
+            // Turn off the inspector when download is clicked
+            this.isInspecting = false;
+            this.updateInspectorButtonState();
+
+            if (!this.generatedCode) return;
+
+            // Remove markdown code fences from the generated code
+            let finalCode = this.generatedCode.replace(/^```(?:java)?\s*/i, '').replace(/```\s*$/i, '');
+
+            const fileName = this.getGeneratedFileName(finalCode);
+
+            // Create a Blob and trigger download
+            const blob = new Blob([finalCode], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    getGeneratedFileName(finalCode = null) {
+        finalCode = finalCode || this.generatedCode || '';
+        let fileName = '';
+        if (this.codeGeneratorType === 'SELENIUM_JAVA_PAGE_ONLY' || this.codeGeneratorType === 'SELENIUM_JAVA_TEST_ONLY') {
             const match = finalCode.match(/public class\s+(\w+)/);
             fileName = match ? match[1] : 'Generated';
             fileName += '.java';
-          } else if (this.codeGeneratorType === 'CUCUMBER_ONLY') {
-            // Try to extract feature title from "Feature:" line
+        } else if (this.codeGeneratorType === 'CUCUMBER_ONLY') {
             const match = finalCode.match(/Feature:\s*(.+)/i);
-            fileName = match ? match[1].trim().replace(/\s+/g, '_') : 'feature';
+            fileName = match ? match[1].trim().replace(/[^a-zA-Z0-9]+/g, '_') : 'feature';
             fileName += '.feature';
-          } else {
-            // Fallback
+        } else {
             fileName = 'Generated.txt';
-          }
-          
-          // Create a Blob and trigger download
-          const blob = new Blob([finalCode], { type: 'text/plain' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        });
-      }
-      
-      
-      
+        }
+        // Append date and time
+        const now = new Date();
+        const dateStr = now.toISOString().replace(/[-:T]/g, '').slice(0, 12); // e.g. 202405281057
+        const ext = fileName.substring(fileName.lastIndexOf('.'));
+        const base = fileName.substring(0, fileName.lastIndexOf('.'));
+        return `${base}_${dateStr}${ext}`;
+    }
 
     // ===================
     // Markdown / Parsing
@@ -334,8 +347,8 @@ class ChatUI {
                 }
             }
             const finalSnippet = typeof this.selectedDomContent === 'string'
-              ? this.selectedDomContent
-              : JSON.stringify(this.selectedDomContent, null, 2);
+                ? this.selectedDomContent
+                : JSON.stringify(this.selectedDomContent, null, 2);
             const finalPrompt = getPrompt(this.codeGeneratorType, {
                 domContent: finalSnippet,
                 pageUrl: pageUrl,
@@ -508,40 +521,47 @@ class ChatUI {
         }
     }
 
-        getPromptKey(language, engine) {
-        const selectedRadio = document.querySelector('input[name="javaGenerationMode"]:checked');
+    getPromptKey(language, engine) {
+        // For checkboxes or multiple selection
+        const selectedInputs = document.querySelectorAll('input[name="javaGenerationMode"]:checked');
         const eng  = this.browserEngineSelect.value;
 
-        if (selectedRadio.value === 'XPATH') {
-            return 'XPATH_ONLY'; 
-          }
-
         if (language === 'java' && engine === 'selenium') {
-          if (!selectedRadio) {
-            return 'SELENIUM_JAVA_PAGE_ONLY'; 
-          }
-          const radioValue = selectedRadio.value;
-          if (radioValue === 'PAGE') {
-            return 'SELENIUM_JAVA_PAGE_ONLY';
-          } else{
-            return 'CUCUMBER_ONLY';
-          }
+            if (!selectedInputs || selectedInputs.length === 0) {
+                return 'SELENIUM_JAVA_PAGE_ONLY';
+            }
+            const selectedValues = Array.from(selectedInputs).map(input => input.value);
+
+            if (selectedValues.includes('PAGE') && selectedValues.includes('FEATURE')) {
+                return 'SELENIUM_JAVA_PAGE_FEATURE';
+            }
+            if (selectedValues.includes('PAGE') && selectedInputs.length === 1) {
+                return 'SELENIUM_JAVA_PAGE_ONLY';
+            }
+            if (selectedValues.includes('XPATH') && selectedInputs.length === 1) {
+                return 'XPATH_ONLY';
+            }
+            if (selectedValues.includes('FEATURE') && selectedInputs.length === 1) {
+                return 'CUCUMBER_ONLY';
+            }
         }
+
         if (language === 'typescript' && engine === 'playwright') {
-          if (!selectedRadio) {
-            return 'PLAYWRIGHT_TYPESCRIPT_PAGE_ONLY'; 
-          }
-          const radioValue = selectedRadio.value;
-          if (radioValue === 'PAGE') {
-            return 'PLAYWRIGHT_TYPESCRIPT_PAGE_ONLY';
-          } else{
-            return 'CUCUMBER_ONLY';
-          }
+            // For radio buttons (single selection)
+            const selectedRadio = document.querySelector('input[name="javaGenerationMode"]:checked');
+            if (!selectedRadio) {
+                return 'PLAYWRIGHT_TYPESCRIPT_PAGE_ONLY';
+            }
+            const radioValue = selectedRadio.value;
+            if (selectedValues.includes('PAGE') && selectedInputs.length === 1) {
+                return 'PLAYWRIGHT_TYPESCRIPT_PAGE_ONLY';
+            } else {
+                return 'CUCUMBER_ONLY';
+            }
         }
         return 'SELENIUM_JAVA_PAGE_ONLY';
     }
 
-    
     async initializeCodeGeneratorType() {
         const { codeGeneratorType } = await chrome.storage.sync.get(['codeGeneratorType']);
         if (codeGeneratorType) {
@@ -616,8 +636,61 @@ class ChatUI {
             this.addMessage('Error resetting chat. Please close and reopen.', 'system');
         }
     }
-}
 
+    // ==============
+    // Git Integration
+    // ==============
+    async pushToGit() {
+        const gitUrl = document.getElementById('gitUrl').value.trim();
+        const repoName = document.getElementById('repoName').value.trim();
+        const branchName = document.getElementById('branchName').value.trim();
+        const gitToken = document.getElementById('gitToken').value.trim();
+        const commitMessage = document.getElementById('commitMessage')?.value || 'Add generated code';
+        const code = this.generatedCode || '';
+        const fileName = this.getGeneratedFileName();
+
+        const gitApi = new GitAPI(gitToken);
+        try {
+            await gitApi.pushFile({
+                gitUrl,
+                repoName,
+                branchName,
+                fileName,
+                content: code,
+                commitMessage
+            });
+            alert('Code pushed to GitHub!');
+        } catch (err) {
+            alert('Git push failed: ' + err.message);
+        }
+    }
+
+    initializeGitSettings() {
+        // Load Git settings from chrome.storage.sync
+        chrome.storage.sync.get(
+            ['gitUrl', 'repoName', 'branchName', 'gitToken', 'commitMessage'],
+            (result) => {
+                if (result.gitUrl)      document.getElementById('gitUrl').value = result.gitUrl;
+                if (result.repoName)    document.getElementById('repoName').value = result.repoName;
+                if (result.branchName)  document.getElementById('branchName').value = result.branchName;
+                if (result.gitToken)    document.getElementById('gitToken').value = result.gitToken;
+                if (result.commitMessage) document.getElementById('commitMessage').value = result.commitMessage;
+            }
+        );
+
+        // Save Git settings on input change
+        ['gitUrl', 'repoName', 'branchName', 'gitToken', 'commitMessage'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', () => {
+                    const obj = {};
+                    obj[id] = el.value;
+                    chrome.storage.sync.set(obj);
+                });
+            }
+        });
+    }
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
